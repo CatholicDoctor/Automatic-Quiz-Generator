@@ -1,4 +1,4 @@
-# Question Bank PDF Generator
+# Automatic Quiz Generator
 
 A question bank manager for educators. Organize questions by category, difficulty, and unit. Randomly generate quizzes with custom difficulty mixes, add reference images, and export formatted PDF exams — complete with a styled header, answer spaces, and a figures section. Fully offline, runs in any browser.
 
@@ -9,7 +9,7 @@ Distributed under [Creative Commons BY-NC-ND 4.0](https://creativecommons.org/li
 
 ## Getting Started
 
-No installation required. Simply open `question-bank.html` in any modern web browser (Chrome, Firefox, Edge, Safari). The app runs entirely offline — no internet connection is needed after the file is downloaded.
+No installation required. Simply open `qutomatic-quiz-generator.html` in any modern web browser (Chrome, Firefox, Edge, Safari). The app runs entirely offline — no internet connection is needed after the file is downloaded.
 
 > **Note:** Your question bank is saved automatically in your browser's `localStorage`. This means your data persists between sessions on the same browser and device. If you switch browsers or devices, use the Export/Import backup feature to transfer your data.
 
