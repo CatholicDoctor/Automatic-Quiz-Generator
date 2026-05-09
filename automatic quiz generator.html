@@ -1,0 +1,1190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Question Bank PDF Generator</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #ffffff; --bg2: #f5f5f3; --bg3: #eeede9;
+    --text: #1a1a1a; --text2: #6b6b6b; --text3: #aaa;
+    --border: rgba(0,0,0,0.12); --border2: rgba(0,0,0,0.22);
+    --blue: #185FA5; --blue-bg: #E6F1FB; --blue-dark: #0C447C; --blue-mid: #B5D4F4;
+    --green: #1D9E75; --amber: #EF9F27; --red: #A32D2D; --red-bg: #FCEBEB;
+    --radius: 8px; --radius-lg: 12px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1e1e1e; --bg2: #2a2a2a; --bg3: #333;
+      --text: #f0f0f0; --text2: #aaa; --text3: #666;
+      --border: rgba(255,255,255,0.1); --border2: rgba(255,255,255,0.2);
+      --blue-bg: #0c2a45; --blue-mid: #1a4a7a;
+    }
+  }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg3); color: var(--text); min-height: 100vh; padding: 24px 16px; }
+  .wrap { max-width: 720px; margin: 0 auto; }
+  .hdr { margin-bottom: 1.5rem; display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+  .hdr h1 { font-size: 22px; font-weight: 600; color: var(--text); margin-bottom: 3px; }
+  .hdr p { font-size: 13px; color: var(--text2); }
+  .save-indicator { font-size: 11px; color: var(--text3); display: flex; align-items: center; gap: 5px; white-space: nowrap; margin-top: 4px; }
+  .save-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); flex-shrink: 0; }
+  .save-dot.saving { background: var(--amber); }
+
+  .tabs { display: flex; gap: 2px; border-bottom: 1px solid var(--border); margin-bottom: 1.25rem; }
+  .tab { font-size: 13px; padding: 8px 18px; cursor: pointer; color: var(--text2); border-bottom: 2px solid transparent; margin-bottom: -1px; background: none; border-top: none; border-left: none; border-right: none; border-radius: 0; font-family: inherit; transition: color 0.15s; }
+  .tab:hover { color: var(--text); }
+  .tab.active { color: var(--blue); border-bottom-color: var(--blue); font-weight: 600; }
+
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  .card { background: var(--bg); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: 1rem 1.25rem; margin-bottom: 1rem; }
+  .form-card { background: var(--bg2); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: 1rem 1.25rem; margin-bottom: 1rem; }
+  .form-card h3 { font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 12px; }
+  .sec-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.07em; color: var(--text3); margin-bottom: 10px; display: block; }
+  .field { margin-bottom: 10px; }
+  .field label { display: block; font-size: 11px; color: var(--text2); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.06em; }
+  .frow { display: flex; gap: 8px; }
+  .frow > * { flex: 1; }
+  .bulk-hint { font-size: 12px; color: var(--text2); margin-top: 6px; line-height: 1.5; }
+  .row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+
+  input[type=text], input[type=number], textarea, select {
+    width: 100%; font-family: inherit; font-size: 13px; padding: 8px 10px;
+    border-radius: var(--radius); border: 1px solid var(--border2);
+    background: var(--bg); color: var(--text); outline: none; transition: border-color 0.15s;
+  }
+  input[type=text]:focus, input[type=number]:focus, textarea:focus, select:focus { border-color: var(--blue); }
+  textarea { min-height: 72px; resize: vertical; line-height: 1.6; }
+  select { cursor: pointer; }
+
+  button { cursor: pointer; font-family: inherit; font-size: 13px; padding: 7px 14px; border-radius: var(--radius); border: 1px solid var(--border2); background: transparent; color: var(--text); transition: background 0.12s; white-space: nowrap; }
+  button:hover { background: var(--bg2); }
+  button:active { transform: scale(0.98); }
+  button.primary { background: var(--blue); color: #fff; border-color: var(--blue); }
+  button.primary:hover { background: var(--blue-dark); border-color: var(--blue-dark); }
+  button.sm { font-size: 11px; padding: 4px 10px; }
+  button.danger { color: var(--red); border-color: var(--red); }
+  button.danger:hover { background: var(--red-bg); }
+  button.ghost { border-color: transparent; color: var(--text2); padding-left: 4px; }
+  button.ghost:hover { background: var(--bg2); color: var(--text); }
+
+  .stats { display: flex; gap: 8px; margin-bottom: 1rem; }
+  .stat { background: var(--bg2); border-radius: var(--radius); padding: 10px 14px; flex: 1; }
+  .stat-val { font-size: 22px; font-weight: 600; color: var(--text); }
+  .stat-lbl { font-size: 11px; color: var(--text2); margin-top: 1px; }
+
+  .cat-block { border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 8px; overflow: hidden; }
+  .cat-head { display: flex; align-items: center; gap: 10px; padding: 9px 12px; background: var(--bg2); cursor: pointer; user-select: none; }
+  .cat-head:hover { background: var(--bg3); }
+  .cat-arrow { font-size: 9px; color: var(--text3); transition: transform 0.15s; display: inline-block; }
+  .cat-arrow.open { transform: rotate(90deg); }
+  .cat-name { font-size: 13px; font-weight: 600; color: var(--text); flex: 1; }
+  .cat-pill { font-size: 11px; padding: 2px 9px; border-radius: 20px; background: var(--blue); color: #fff; }
+  .q-list { padding: 8px 12px; display: flex; flex-direction: column; gap: 4px; }
+  .q-item { display: flex; align-items: flex-start; gap: 8px; font-size: 13px; color: var(--text); padding: 6px 8px; border-radius: var(--radius); border: 1px solid transparent; }
+  .q-item:hover { border-color: var(--border); background: var(--bg2); }
+  .q-num { font-size: 11px; color: var(--text3); min-width: 18px; padding-top: 1px; flex-shrink: 0; }
+  .q-text { flex: 1; line-height: 1.5; }
+  .q-del { font-size: 11px; color: var(--red); cursor: pointer; opacity: 0; padding: 0 4px; flex-shrink: 0; }
+  .q-item:hover .q-del { opacity: 1; }
+  .empty-cat { font-size: 12px; color: var(--text3); padding: 8px; }
+  .add-cat-row { display: flex; gap: 8px; margin-top: 10px; }
+  .add-cat-row input { flex: 1; }
+
+  .sel-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 8px; }
+  .sel-row { display: flex; align-items: center; gap: 8px; background: var(--bg2); border-radius: var(--radius); padding: 8px 10px; border: 1px solid var(--border); }
+  .sel-name { font-size: 13px; color: var(--text); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .sel-max { font-size: 11px; color: var(--text3); flex-shrink: 0; }
+  .sel-row input[type=number] { width: 52px; flex: 0 0 52px; text-align: center; }
+
+  /* Unit blocks in export tab */
+  .unit-block { border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 10px; overflow: hidden; }
+  .unit-head { display: flex; align-items: center; gap: 10px; padding: 9px 14px; background: var(--bg3); cursor: pointer; user-select: none; }
+  .unit-head:hover { filter: brightness(0.97); }
+  .unit-head-name { font-size: 13px; font-weight: 600; color: var(--text); flex: 1; }
+  .unit-head-pill { font-size: 11px; padding: 2px 9px; border-radius: 20px; background: var(--blue-bg); color: var(--blue-dark); }
+  .unit-arrow { font-size: 9px; color: var(--text3); transition: transform 0.15s; display: inline-block; }
+  .unit-arrow.open { transform: rotate(90deg); }
+  .unit-cats { padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; }
+
+  /* Difficulty selection row */
+  .diff-sel-row { display: flex; align-items: center; gap: 6px; background: var(--bg2); border-radius: var(--radius); padding: 7px 10px; border: 1px solid var(--border); }
+  .diff-sel-label { font-size: 12px; color: var(--text); flex: 1; }
+  .diff-sel-inputs { display: flex; gap: 6px; align-items: center; }
+  .diff-sel-inputs label { font-size: 11px; color: var(--text2); display: flex; align-items: center; gap: 3px; }
+  .diff-sel-inputs input[type=number] { width: 46px; flex: 0 0 46px; text-align: center; padding: 4px 6px; font-size: 12px; }
+
+  .preview-shell { background: var(--bg2); border-radius: var(--radius); padding: 1.25rem; border: 1px solid var(--border); }
+  .preview-doc-title { font-size: 17px; font-weight: 600; color: var(--text); margin-bottom: 3px; }
+  .preview-meta { font-size: 11px; color: var(--text2); margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px solid var(--border); }
+  .preview-q { font-size: 13px; color: var(--text); line-height: 1.6; padding: 5px 0 5px 14px; border-left: 2px solid var(--blue-mid); margin-bottom: 4px; }
+  .empty-state { text-align: center; padding: 2rem; color: var(--text3); font-size: 13px; }
+
+  #toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: var(--blue); color: #fff; padding: 8px 18px; border-radius: var(--radius); font-size: 13px; opacity: 0; pointer-events: none; transition: opacity 0.25s; z-index: 999; white-space: nowrap; box-shadow: 0 2px 12px rgba(0,0,0,0.2); }
+  #toast.show { opacity: 1; }
+  .backup-bar { display: flex; gap: 8px; align-items: center; margin-bottom: 1rem; padding: 10px 14px; background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius-lg); flex-wrap: wrap; }
+  .backup-bar span { font-size: 12px; color: var(--text2); flex: 1; min-width: 160px; }
+  #importFile { display: none; }
+  .diff-tag { display: inline-block; font-size: 10px; padding: 1px 7px; border-radius: 20px; font-weight: 600; margin-left: 6px; flex-shrink: 0; }
+  .diff-easy   { background: #d4f4e2; color: #1a6e3c; }
+  .diff-medium { background: #fff0cc; color: #8a5c00; }
+  .diff-hard   { background: #fde0e0; color: #8a1a1a; }
+  .cat-id-badge { font-size: 10px; color: var(--text3); margin-right: 4px; min-width: 22px; text-align: right; flex-shrink: 0; }
+  .rename-form { display: flex; gap: 6px; align-items: center; flex: 1; }
+  .rename-form input { padding: 3px 7px; font-size: 12px; flex: 1; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="hdr">
+    <div>
+      <h1>Question Bank PDF Generator</h1>
+      <p>Questions are randomized and exported without category labels.</p>
+    </div>
+    <div class="save-indicator">
+      <span class="save-dot" id="saveDot"></span>
+      <span id="saveLabel">Saved</span>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('add')">Add questions</button>
+    <button class="tab" onclick="switchTab('bank')">Question bank</button>
+    <button class="tab" onclick="switchTab('export')">Select &amp; export</button>
+  </div>
+  <!-- hidden file input for import -->
+  <input type="file" id="importFile" accept=".json" onchange="importBackup(event)" style="display:none" />
+
+  <!-- TAB: Add -->
+  <div class="panel active" id="panel-add">
+    <div class="form-card">
+      <h3>Add a single question</h3>
+      <div class="frow">
+        <div class="field" style="flex:3;">
+          <label>Category</label>
+          <select id="singleCat" onchange="toggleNewCat('singleNewCatRow', this)"></select>
+        </div>
+        <div class="field" style="flex:1;">
+          <label>Difficulty</label>
+          <select id="singleDiff">
+            <option value="easy">Easy</option>
+            <option value="medium">Medium</option>
+            <option value="hard">Hard</option>
+          </select>
+        </div>
+      </div>
+      <div id="singleNewCatRow" style="display:none;margin-bottom:10px;">
+        <input type="text" id="newCatName" placeholder="New category name…" />
+      </div>
+      <div class="field">
+        <label>Question</label>
+        <textarea id="singleQ" placeholder="Type your question here…" rows="2"></textarea>
+      </div>
+      <div class="field">
+        <label>Image URL <span style="font-weight:400;text-transform:none;font-size:11px;color:var(--text3);">(optional)</span></label>
+        <input type="text" id="singleImg" placeholder="https://example.com/image.png" />
+      </div>
+      <button class="primary" onclick="addSingle()">Add question</button>
+    </div>
+    <div class="form-card">
+      <h3>Bulk import</h3>
+      <div class="frow">
+        <div class="field" style="flex:3;">
+          <label>Category</label>
+          <select id="bulkCat" onchange="toggleNewCat('bulkNewCatRow', this)"></select>
+        </div>
+        <div class="field" style="flex:1;">
+          <label>Difficulty</label>
+          <select id="bulkDiff">
+            <option value="easy">Easy</option>
+            <option value="medium">Medium</option>
+            <option value="hard">Hard</option>
+          </select>
+        </div>
+      </div>
+      <div id="bulkNewCatRow" style="display:none;margin-bottom:10px;">
+        <input type="text" id="bulkNewCat" placeholder="New category name…" />
+      </div>
+      <div class="field">
+        <label>Questions (one per line)</label>
+        <textarea id="bulkQ" placeholder="What is the speed of light?&#10;Define osmosis.&#10;Who wrote Don Quixote?" rows="6"></textarea>
+        <p class="bulk-hint">Paste or type multiple questions, one per line. Empty lines are ignored.</p>
+      </div>
+      <button class="primary" onclick="addBulk()">Import questions</button>
+    </div>
+  </div>
+
+  <!-- TAB: Bank -->
+  <div class="panel" id="panel-bank">
+    <div class="backup-bar">
+      <span>&#128190; Backup your question bank to a file, or restore from a previous backup.</span>
+      <button onclick="exportBackup()">&#8595; Export backup</button>
+      <button onclick="document.getElementById('importFile').click()">&#8593; Import backup</button>
+    </div>
+    <div class="stats" id="statsRow"></div>
+
+    <!-- Unit management -->
+    <div style="margin-bottom:10px;">
+      <div class="row" style="margin-bottom:6px;">
+        <span class="sec-label" style="margin-bottom:0;">Units</span>
+      </div>
+      <div id="unitBlocks"></div>
+      <div class="add-cat-row" style="margin-top:6px;">
+        <input type="number" id="newUnitID" placeholder="ID" style="flex:0 0 60px;width:60px;" min="1" />
+        <input type="text" id="newUnitInput" placeholder="New unit name…" onkeydown="if(event.key==='Enter')addUnit()" />
+        <button onclick="addUnit()">+ Add unit</button>
+      </div>
+    </div>
+
+    <div id="catBlocks"></div>
+    <div class="add-cat-row">
+      <input type="number" id="newCatID" placeholder="ID" style="flex:0 0 60px;width:60px;" min="1" />
+      <input type="text" id="newCatInput" placeholder="New category name…" onkeydown="if(event.key==='Enter')addCategory()" />
+      <select id="newCatUnit" style="flex:0 0 160px;width:160px;"></select>
+      <button onclick="addCategory()">+ Add category</button>
+    </div>
+  </div>
+
+  <!-- TAB: Export -->
+  <div class="panel" id="panel-export">
+
+    <div class="form-card">
+      <h3>Quiz information</h3>
+
+      <!-- Always visible: Quiz Name + Quiz ID -->
+      <div class="frow">
+        <div class="field">
+          <label>Quiz name</label>
+          <input type="text" id="infoQuizName" placeholder="e.g. Primer" oninput="renderPreview()" />
+        </div>
+        <div class="field">
+          <label>Quiz ID / Model</label>
+          <input type="text" id="infoQuizID" placeholder="e.g. A" oninput="renderPreview()" />
+        </div>
+      </div>
+
+      <!-- Toggle for advanced fields -->
+      <div style="margin-top:4px;margin-bottom:8px;">
+        <button class="sm ghost" onclick="toggleAdvanced()" id="advToggleBtn" style="font-size:12px;color:var(--text2);border-color:transparent;">&#9656; Show more options</button>
+      </div>
+
+      <!-- Collapsible advanced fields -->
+      <div id="advancedFields" style="display:none;">
+        <div class="frow">
+          <div class="field">
+            <label>University ID</label>
+            <input type="text" id="infoUniversity" value="Instituto Tecnológico de Santo Domingo (INTEC)" oninput="renderPreview()" />
+          </div>
+        </div>
+        <div class="frow">
+          <div class="field">
+            <label>Department ID</label>
+            <input type="text" id="infoDepartment" value="Área de Ciencias de la Salud" oninput="renderPreview()" />
+          </div>
+          <div class="field">
+            <label>Teacher</label>
+            <input type="text" id="infoTeacher" value="Dr. Angel Hernandez" oninput="renderPreview()" />
+          </div>
+        </div>
+        <div class="frow">
+          <div class="field">
+            <label>Subject</label>
+            <input type="text" id="infoSubject" value="Laboratorio de Bioquímica I" oninput="renderPreview()" />
+          </div>
+          <div class="field">
+            <label>Subject ID</label>
+            <input type="text" id="infoSubjectID" value="MED-206L" oninput="renderPreview()" />
+          </div>
+        </div>
+        <div class="frow">
+          <div class="field">
+            <label>Trimester</label>
+            <select id="infoTrimester" onchange="renderPreview()">
+              <option value="febrero - abril">febrero - abril</option>
+              <option value="mayo - julio">mayo - julio</option>
+              <option value="agosto - octubre">agosto - octubre</option>
+              <option value="noviembre - enero">noviembre - enero</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Year</label>
+            <input type="number" id="infoYear" oninput="renderPreview()" style="width:100%;" />
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <span class="sec-label">Questions per category &amp; difficulty</span>
+      <div id="selGrid"></div>
+      <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;align-items:center;">
+        <button onclick="generateSelection()">Generate selection</button>
+        <span id="selTotalCounter" style="display:none;font-size:12px;font-weight:500;color:#fff;background:var(--blue);padding:3px 10px;border-radius:20px;"></span>
+        <button class="danger" onclick="clearSelection()">Clear</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="row" style="margin-bottom:12px;">
+        <span class="sec-label" style="margin-bottom:0;">PDF preview</span>
+        <button class="primary" onclick="downloadPDF()">Download PDF</button>
+      </div>
+      <div id="previewArea"><div class="empty-state">Fill in quiz info and generate a selection above to preview.</div></div>
+    </div>
+  </div>
+</div>
+
+<footer style="max-width:720px;margin:2rem auto 0;padding:1.25rem 0 2rem;border-top:1px solid var(--border);text-align:center;">
+  <p style="font-size:12px;color:var(--text2);line-height:1.7;margin-bottom:6px;">
+    Written and maintained by <strong>Dr. Angel Hernandez</strong> with support from <strong>Claude AI</strong>.
+    &nbsp;·&nbsp; <a href="mailto:dr.angel.e.hernandez@gmail.com" style="color:var(--blue);text-decoration:none;">dr.angel.e.hernandez@gmail.com</a>
+  </p>
+  <p style="font-size:12px;color:var(--text3);line-height:1.7;margin-bottom:8px;">
+    Distributed for use of teachers worldwide under a
+    <a href="https://creativecommons.org/licenses/by-nc-nd/4.0/" target="_blank" rel="noopener"
+       style="color:var(--blue);text-decoration:none;">Creative Commons BY-NC-ND 4.0</a> license.
+    Anyone is free to distribute and use this tool as long as they do not claim ownership of the idea or charge for its use.
+  </p>
+  <div style="display:flex;align-items:center;justify-content:center;gap:6px;margin-top:4px;">
+    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color:var(--text3);">
+      <circle cx="12" cy="12" r="10"/><path d="M12 8v4m0 4h.01"/>
+    </svg>
+    <span style="font-size:11px;color:var(--text3);">CC BY-NC-ND 4.0 &nbsp;·&nbsp; Free to share, not for sale</span>
+  </div>
+</footer>
+
+<div id="toast"></div>
+
+<script>
+const STORAGE_KEY = 'questionbank-db';
+const UNITS_KEY   = 'questionbank-units';
+// db structure: { catName: { id: Number, unit: String|null, questions: [{text, diff, img?}] } }
+// units: { unitName: { id: Number } }
+let db = {};
+let units = {};
+let openCats = {};
+let openUnits = {};
+let selection = {}; // { catName: { easy: N, medium: N, hard: N } }
+let lastPicked = [];
+let saveTimer = null;
+
+// ── helpers ──────────────────────────────────────────────────────────────────
+function cats() {
+  return Object.keys(db).sort((a, b) => (db[a].id || 0) - (db[b].id || 0));
+}
+function unitList() {
+  return Object.keys(units).sort((a, b) => (units[a].id || 0) - (units[b].id || 0));
+}
+function catsInUnit(unit) {
+  return cats().filter(c => db[c].unit === unit);
+}
+function catsWithoutUnit() {
+  return cats().filter(c => !db[c].unit);
+}
+
+function toggleNewCat(rowId, sel) {
+  document.getElementById(rowId).style.display = sel.value === '__new__' ? 'block' : 'none';
+}
+
+function populateUnitSelect(elId, includeNone = true) {
+  const el = document.getElementById(elId); if (!el) return;
+  const prev = el.value;
+  let opts = includeNone ? '<option value="">— No unit —</option>' : '';
+  opts += unitList().map(u => `<option value="${esc(u)}">${units[u].id ? `[${units[u].id}] ` : ''}${u}</option>`).join('');
+  el.innerHTML = opts;
+  if (prev && (unitList().includes(prev) || prev === '')) el.value = prev;
+}
+
+// ── storage ──────────────────────────────────────────────────────────────────
+function loadFromStorage() {
+  try { const raw = localStorage.getItem(STORAGE_KEY); if (raw) db = JSON.parse(raw); } catch(e) { db = {}; }
+  try { const rawU = localStorage.getItem(UNITS_KEY); if (rawU) units = JSON.parse(rawU); } catch(e) { units = {}; }
+
+  for (const key of Object.keys(db)) {
+    if (Array.isArray(db[key])) db[key] = { id: 0, unit: null, questions: db[key].map(t => typeof t === 'string' ? { text: t, diff: 'easy' } : t) };
+    if (!db[key].questions) db[key].questions = [];
+    if (!('unit' in db[key])) db[key].unit = null;
+    db[key].questions = db[key].questions.map(q => typeof q === 'string' ? { text: q, diff: 'easy' } : { diff: 'easy', ...q });
+  }
+
+  if (!Object.keys(db).length) {
+    db = {
+      "Mathematics": { id: 1, unit: null, questions: [
+        { text: "What is the derivative of sin(x)?", diff: "easy" },
+        { text: "Solve for x: 2x² - 5x + 3 = 0", diff: "medium" },
+        { text: "What is the integral of 1/x dx?", diff: "medium" },
+        { text: "Define a prime number and give three examples.", diff: "easy" },
+        { text: "What is the Pythagorean theorem?", diff: "easy" }
+      ]},
+      "Science": { id: 2, unit: null, questions: [
+        { text: "What is Newton's second law of motion?", diff: "easy" },
+        { text: "Describe the process of osmosis.", diff: "easy" },
+        { text: "What is the difference between mitosis and meiosis?", diff: "medium" },
+        { text: "What is the speed of light in a vacuum?", diff: "easy" },
+        { text: "Explain the concept of entropy.", diff: "hard" }
+      ]},
+      "History": { id: 3, unit: null, questions: [
+        { text: "When did the First World War begin and end?", diff: "easy" },
+        { text: "Who was the first president of the United States?", diff: "easy" },
+        { text: "What was the significance of the Magna Carta?", diff: "medium" },
+        { text: "Describe the causes of the French Revolution.", diff: "hard" },
+        { text: "What event triggered the start of World War II?", diff: "easy" }
+      ]},
+      "Literature": { id: 4, unit: null, questions: [
+        { text: "Who wrote 'Don Quixote'?", diff: "easy" },
+        { text: "What is the main theme of '1984' by George Orwell?", diff: "medium" },
+        { text: "Explain the concept of a tragic hero using a specific example.", diff: "hard" },
+        { text: "What literary device is used in 'The world is a stage'?", diff: "medium" },
+        { text: "Briefly describe the plot of 'Crime and Punishment'.", diff: "hard" }
+      ]}
+    };
+    saveToStorage();
+  }
+  populateCatSelects();
+  populateUnitSelect('newCatUnit');
+
+  const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Santo_Domingo' }));
+  const month = now.getMonth() + 1;
+  const fullYear = now.getFullYear();
+  const trimesterEl = document.getElementById('infoTrimester');
+  if (trimesterEl) {
+    if ([2,3,4].includes(month))       trimesterEl.value = 'febrero - abril';
+    else if ([5,6,7].includes(month))  trimesterEl.value = 'mayo - julio';
+    else if ([8,9,10].includes(month)) trimesterEl.value = 'agosto - octubre';
+    else                               trimesterEl.value = 'noviembre - enero';
+  }
+  const yearEl = document.getElementById('infoYear');
+  if (yearEl && !yearEl.value) yearEl.value = (month === 1) ? fullYear - 1 : fullYear;
+}
+
+function saveToStorage() {
+  setSaving(true);
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(db));
+      localStorage.setItem(UNITS_KEY, JSON.stringify(units));
+    } catch(e) { showToast('Could not save — storage error'); }
+    setSaving(false);
+  }, 500);
+}
+
+function setSaving(saving) {
+  document.getElementById('saveDot').className = 'save-dot' + (saving ? ' saving' : '');
+  document.getElementById('saveLabel').textContent = saving ? 'Saving…' : 'Saved';
+}
+
+// ── category selects ──────────────────────────────────────────────────────────
+function populateCatSelects() {
+  ['singleCat','bulkCat'].forEach(id => {
+    const el = document.getElementById(id); if (!el) return;
+    const prev = el.value;
+    const options = cats().map(c => `<option value="${esc(c)}">${db[c].id ? `[${db[c].id}] ` : ''}${c}</option>`).join('');
+    el.innerHTML = (options || '<option value="">— no categories yet —</option>')
+      + '<option value="__new__">＋ New category…</option>';
+    if (prev && (cats().includes(prev) || prev === '__new__')) el.value = prev;
+    // hide new-cat boxes if not on __new__
+    if (id === 'singleCat') document.getElementById('singleNewCatRow').style.display = el.value === '__new__' ? 'block' : 'none';
+    if (id === 'bulkCat')   document.getElementById('bulkNewCatRow').style.display   = el.value === '__new__' ? 'block' : 'none';
+  });
+}
+
+// ── add questions ─────────────────────────────────────────────────────────────
+function resolveCategory(selectId, newCatInputId) {
+  const sel = document.getElementById(selectId);
+  if (sel.value === '__new__') {
+    const name = document.getElementById(newCatInputId).value.trim();
+    if (!name) { showToast('Enter a name for the new category'); return null; }
+    if (!db[name]) {
+      const existingIds = Object.values(db).map(c => c.id || 0);
+      const nextId = existingIds.length ? Math.max(...existingIds) + 1 : 1;
+      db[name] = { id: nextId, questions: [] };
+    }
+    document.getElementById(newCatInputId).value = '';
+    return name;
+  }
+  return sel.value || null;
+}
+
+function addSingle() {
+  const cat = resolveCategory('singleCat', 'newCatName');
+  if (!cat) { showToast('Choose or create a category first'); return; }
+  const text = document.getElementById('singleQ').value.trim();
+  if (!text) { showToast('Question cannot be empty'); return; }
+  const diff = document.getElementById('singleDiff').value;
+  const img  = document.getElementById('singleImg').value.trim();
+  db[cat].questions.push({ text, diff, ...(img ? { img } : {}) });
+  document.getElementById('singleQ').value = '';
+  document.getElementById('singleImg').value = '';
+  populateCatSelects(); saveToStorage();
+  showToast(`Question added to "${cat}"`);
+}
+
+function addBulk() {
+  const cat = resolveCategory('bulkCat', 'bulkNewCat');
+  if (!cat) { showToast('Choose or create a category first'); return; }
+  const diff = document.getElementById('bulkDiff').value;
+  const lines = document.getElementById('bulkQ').value.split('\n').map(l => l.trim()).filter(Boolean);
+  if (!lines.length) { showToast('No questions found'); return; }
+  lines.forEach(text => db[cat].questions.push({ text, diff }));
+  document.getElementById('bulkQ').value = '';
+  populateCatSelects(); saveToStorage();
+  showToast(`${lines.length} question${lines.length !== 1 ? 's' : ''} added to "${cat}"`);
+}
+
+// ── tab switching ─────────────────────────────────────────────────────────────
+function switchTab(t) {
+  document.querySelectorAll('.tab').forEach((el, i) => el.classList.toggle('active', ['add','bank','export'][i] === t));
+  document.querySelectorAll('.panel').forEach(el => el.classList.remove('active'));
+  document.getElementById('panel-' + t).classList.add('active');
+  if (t === 'bank') renderBank();
+  if (t === 'export') renderExport();
+  if (t === 'add') populateCatSelects();
+}
+
+// ── unit management ───────────────────────────────────────────────────────────
+function renderUnitBlocks() {
+  const el = document.getElementById('unitBlocks'); if (!el) return;
+  if (!unitList().length) { el.innerHTML = '<div style="font-size:12px;color:var(--text3);padding:4px 0;">No units yet.</div>'; return; }
+  el.innerHTML = unitList().map(u => {
+    const open = openUnits[u];
+    const catsHere = catsInUnit(u);
+    return `<div class="cat-block" style="margin-bottom:6px;">
+      <div class="cat-head" onclick="toggleUnit('${esc(u)}')">
+        <span class="cat-arrow ${open ? 'open' : ''}">&#9658;</span>
+        <span class="cat-id-badge">#${units[u].id||'—'}</span>
+        ${open
+          ? `<span class="rename-form" onclick="event.stopPropagation()">
+               <input type="text" value="${esc(u)}" id="renameUnit_${safeid(u)}" style="font-weight:600;font-size:13px;" />
+               <input type="number" value="${units[u].id||''}" id="renameUnitId_${safeid(u)}" placeholder="ID" style="width:54px;flex:0 0 54px;" min="1" />
+               <button class="sm primary" onclick="renameUnit('${esc(u)}')">Save</button>
+             </span>`
+          : `<span class="cat-name">${u}</span>`
+        }
+        <span class="cat-pill">${catsHere.length} cat${catsHere.length !== 1 ? 's' : ''}</span>
+        <button class="sm danger" onclick="event.stopPropagation();deleteUnit('${esc(u)}')">Remove</button>
+      </div>
+      ${open ? `<div style="padding:6px 12px;font-size:12px;color:var(--text2);">
+        Categories: ${catsHere.length ? catsHere.join(', ') : 'none assigned'}
+      </div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+function toggleUnit(u) { openUnits[u] = !openUnits[u]; renderUnitBlocks(); }
+
+function addUnit() {
+  const nameEl = document.getElementById('newUnitInput');
+  const idEl   = document.getElementById('newUnitID');
+  const name = nameEl.value.trim(); if (!name) return;
+  if (units[name]) { showToast('Unit already exists'); return; }
+  const id = parseInt(idEl.value) || (Math.max(0, ...Object.values(units).map(u => u.id || 0)) + 1);
+  units[name] = { id };
+  nameEl.value = ''; idEl.value = '';
+  populateUnitSelect('newCatUnit');
+  renderUnitBlocks(); saveToStorage();
+}
+
+function renameUnit(oldName) {
+  const newName = document.getElementById('renameUnit_' + safeid(oldName)).value.trim();
+  const newId   = parseInt(document.getElementById('renameUnitId_' + safeid(oldName)).value) || units[oldName].id;
+  if (!newName) { showToast('Name cannot be empty'); return; }
+  if (newName !== oldName && units[newName]) { showToast('Unit already exists'); return; }
+  if (newName !== oldName) {
+    units[newName] = units[oldName]; delete units[oldName];
+    if (openUnits[oldName]) { openUnits[newName] = true; delete openUnits[oldName]; }
+    cats().forEach(c => { if (db[c].unit === oldName) db[c].unit = newName; });
+  }
+  units[newName].id = newId;
+  populateUnitSelect('newCatUnit'); populateCatSelects(); renderUnitBlocks(); renderBank(); saveToStorage();
+  showToast('Unit updated');
+}
+
+function deleteUnit(name) {
+  if (!confirm(`Remove unit "${name}"? Categories in it will become unassigned.`)) return;
+  delete units[name]; delete openUnits[name];
+  cats().forEach(c => { if (db[c].unit === name) db[c].unit = null; });
+  populateUnitSelect('newCatUnit'); renderUnitBlocks(); renderBank(); saveToStorage();
+}
+const DIFF_LABEL = { easy: 'Easy', medium: 'Medium', hard: 'Hard' };
+
+function renderBank() {
+  renderUnitBlocks();
+  const total = cats().reduce((s,c) => s + db[c].questions.length, 0);
+  document.getElementById('statsRow').innerHTML = `
+    <div class="stat"><div class="stat-val">${cats().length}</div><div class="stat-lbl">Categories</div></div>
+    <div class="stat"><div class="stat-val">${total}</div><div class="stat-lbl">Total questions</div></div>`;
+  const el = document.getElementById('catBlocks');
+  if (!cats().length) { el.innerHTML = '<div class="empty-state">No questions yet. Go to "Add questions" to get started.</div>'; return; }
+  el.innerHTML = cats().map(cat => {
+    const { id, unit, questions: qs } = db[cat];
+    const open = openCats[cat];
+    return `<div class="cat-block">
+      <div class="cat-head" onclick="toggleCat('${esc(cat)}')">
+        <span class="cat-arrow ${open ? 'open' : ''}">&#9658;</span>
+        <span class="cat-id-badge">#${id || '—'}</span>
+        ${open
+          ? `<span class="rename-form" onclick="event.stopPropagation()">
+               <input type="text" value="${esc(cat)}" id="rename_${safeid(cat)}" style="font-weight:600;font-size:13px;" />
+               <input type="number" value="${id||''}" id="renameId_${safeid(cat)}" placeholder="ID" style="width:54px;flex:0 0 54px;" min="1" />
+               <select id="renameUnit_${safeid(cat)}" style="font-size:11px;padding:3px 6px;flex:0 0 130px;width:130px;" onchange="db['${esc(cat)}'].unit=this.value||null;saveToStorage()">
+                 <option value="">— No unit —</option>
+                 ${unitList().map(u => `<option value="${esc(u)}" ${unit===u?'selected':''}>${u}</option>`).join('')}
+               </select>
+               <button class="sm primary" onclick="renameCat('${esc(cat)}')">Save</button>
+             </span>`
+          : `<span class="cat-name">${cat}</span>`
+        }
+        ${unit && !open ? `<span style="font-size:10px;padding:1px 7px;border-radius:20px;background:var(--bg3);color:var(--text3);flex-shrink:0;">${unit}</span>` : ''}
+        <span class="cat-pill">${qs.length} q${qs.length !== 1 ? 's' : ''}</span>
+        <button class="sm danger" onclick="event.stopPropagation();deleteCat('${esc(cat)}')">Remove</button>
+      </div>
+      ${open ? `<div class="q-list">
+        ${!qs.length ? '<div class="empty-cat">No questions in this category.</div>' : qs.map((q, i) => `
+          <div class="q-item">
+            <span class="q-num">${i+1}.</span>
+            <span class="q-text">${q.text}</span>
+            ${q.img ? `<span title="${q.img}" style="font-size:11px;color:var(--blue);flex-shrink:0;">🖼</span>` : ''}
+            <span class="diff-tag diff-${q.diff}">${DIFF_LABEL[q.diff]}</span>
+            <span class="q-del" onclick="deleteQ('${esc(cat)}',${i})">&#10005;</span>
+          </div>`).join('')}
+      </div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+function toggleCat(cat) { openCats[cat] = !openCats[cat]; renderBank(); }
+
+function renameCat(oldName) {
+  const newName = document.getElementById('rename_' + safeid(oldName)).value.trim();
+  const newId   = parseInt(document.getElementById('renameId_' + safeid(oldName)).value) || db[oldName].id;
+  if (!newName) { showToast('Name cannot be empty'); return; }
+  if (newName !== oldName && db[newName]) { showToast('Category already exists'); return; }
+  if (newName !== oldName) {
+    db[newName] = db[oldName];
+    delete db[oldName];
+    if (openCats[oldName]) { openCats[newName] = true; delete openCats[oldName]; }
+    if (selection[oldName] !== undefined) { selection[newName] = selection[oldName]; delete selection[oldName]; }
+  }
+  db[newName].id = newId;
+  populateCatSelects(); renderBank(); saveToStorage();
+  showToast('Category updated');
+}
+
+function addCategory() {
+  const nameInput = document.getElementById('newCatInput');
+  const idInput   = document.getElementById('newCatID');
+  const unitSel   = document.getElementById('newCatUnit');
+  const name = nameInput.value.trim();
+  if (!name) return;
+  if (db[name]) { showToast('Category already exists'); return; }
+  const id   = parseInt(idInput.value) || (Math.max(0, ...Object.values(db).map(c => c.id || 0)) + 1);
+  const unit = unitSel ? (unitSel.value || null) : null;
+  db[name] = { id, unit, questions: [] };
+  nameInput.value = ''; idInput.value = '';
+  populateCatSelects(); renderBank(); saveToStorage();
+}
+
+function deleteCat(cat) {
+  if (!confirm(`Remove category "${cat}" and all its questions?`)) return;
+  delete db[cat]; delete selection[cat]; delete openCats[cat];
+  lastPicked = [];
+  populateCatSelects(); renderBank(); saveToStorage();
+}
+
+function deleteQ(cat, idx) { db[cat].questions.splice(idx, 1); renderBank(); saveToStorage(); }
+
+// ── export / selection ────────────────────────────────────────────────────────
+function selGet(cat, diff) {
+  return (selection[cat] && selection[cat][diff]) ? selection[cat][diff] : 0;
+}
+function selSet(cat, diff, val) {
+  if (!selection[cat]) selection[cat] = { easy: 0, medium: 0, hard: 0 };
+  const qs = db[cat].questions;
+  const avail = qs.filter(q => q.diff === diff).length;
+  selection[cat][diff] = Math.min(Math.max(parseInt(val) || 0, 0), avail);
+}
+
+function catTotal(cat) {
+  const sel = selection[cat] || {};
+  return (parseInt(sel.easy)||0) + (parseInt(sel.medium)||0) + (parseInt(sel.hard)||0);
+}
+
+function grandTotal() {
+  return cats().reduce((s, c) => s + catTotal(c), 0);
+}
+
+function updateTotalCounter() {
+  const el = document.getElementById('selTotalCounter');
+  if (!el) return;
+  const n = grandTotal();
+  el.textContent = n > 0 ? `${n} question${n !== 1 ? 's' : ''}` : '';
+  el.style.display = n > 0 ? 'inline-block' : 'none';
+}
+
+function catSelRow(cat) {
+  const qs = db[cat].questions;
+  const counts = { easy: qs.filter(q=>q.diff==='easy').length, medium: qs.filter(q=>q.diff==='medium').length, hard: qs.filter(q=>q.diff==='hard').length };
+  const ve = selGet(cat,'easy'), vm = selGet(cat,'medium'), vh = selGet(cat,'hard');
+  const total = ve + vm + vh;
+  return `<div class="diff-sel-row">
+    <span class="diff-sel-label" title="${cat}">${cat}</span>
+    <span id="catcounter_${safeid(cat)}" style="font-size:11px;color:#fff;font-weight:500;background:var(--blue);padding:2px 8px;border-radius:20px;min-width:18px;text-align:center;flex-shrink:0;display:${total > 0 ? 'inline-block' : 'none'};">${total > 0 ? total : ''}</span>
+    <div class="diff-sel-inputs">
+      <label style="color:#1a6e3c;">E<input type="number" min="0" max="${counts.easy}" value="${ve}" oninput="selSet('${esc(cat)}','easy',this.value);updateCatCounter('${esc(cat)}');updateTotalCounter();renderPreview()" /></label>
+      <label style="color:#8a5c00;">M<input type="number" min="0" max="${counts.medium}" value="${vm}" oninput="selSet('${esc(cat)}','medium',this.value);updateCatCounter('${esc(cat)}');updateTotalCounter();renderPreview()" /></label>
+      <label style="color:#8a1a1a;">H<input type="number" min="0" max="${counts.hard}" value="${vh}" oninput="selSet('${esc(cat)}','hard',this.value);updateCatCounter('${esc(cat)}');updateTotalCounter();renderPreview()" /></label>
+    </div>
+  </div>`;
+}
+
+function updateCatCounter(cat) {
+  const el = document.getElementById('catcounter_' + safeid(cat));
+  if (!el) return;
+  const n = catTotal(cat);
+  el.textContent = n > 0 ? n : '';
+  el.style.display = n > 0 ? 'inline-block' : 'none';
+}
+
+function renderExport() {
+  const el = document.getElementById('selGrid');
+  if (!cats().length) { el.innerHTML = '<p style="font-size:13px;color:var(--text3);">Add questions first.</p>'; return; }
+
+  const grouped = unitList().filter(u => catsInUnit(u).length > 0);
+  const unassigned = catsWithoutUnit();
+  let html = '<div style="font-size:10px;color:var(--text3);margin-bottom:6px;display:flex;gap:16px;padding:0 2px;"><span style="color:#1a6e3c;">E = Easy</span><span style="color:#8a5c00;">M = Medium</span><span style="color:#8a1a1a;">H = Hard</span></div>';
+
+  grouped.forEach(u => {
+    const catsHere = catsInUnit(u);
+    const openKey = '__unit__' + u;
+    const open = openUnits[openKey] !== false; // default open
+    html += `<div class="unit-block">
+      <div class="unit-head" onclick="toggleExportUnit('${esc(u)}')">
+        <span class="unit-arrow ${open ? 'open' : ''}">&#9658;</span>
+        <span class="unit-head-name">${u}</span>
+        <span class="unit-head-pill">${catsHere.length} cat${catsHere.length !== 1 ? 's' : ''}</span>
+      </div>
+      ${open ? `<div class="unit-cats">${catsHere.map(c => catSelRow(c)).join('')}</div>` : ''}
+    </div>`;
+  });
+
+  if (unassigned.length) {
+    html += `<div style="font-size:11px;font-weight:600;color:var(--text3);margin:8px 0 4px;text-transform:uppercase;letter-spacing:0.06em;">Uncategorized</div>`;
+    html += unassigned.map(c => catSelRow(c)).join('');
+  }
+
+  el.innerHTML = html;
+  updateTotalCounter();
+}
+
+function toggleExportUnit(u) {
+  const key = '__unit__' + u;
+  openUnits[key] = openUnits[key] === false ? true : false;
+  renderExport();
+}
+
+function generateSelection() {
+  const total = cats().reduce((s, c) => {
+    const sel = selection[c] || {};
+    return s + (parseInt(sel.easy)||0) + (parseInt(sel.medium)||0) + (parseInt(sel.hard)||0);
+  }, 0);
+  if (!total) { showToast('Set at least 1 question in any category'); return; }
+  lastPicked = buildPicked();
+  renderPreview();
+  showToast(`${lastPicked.length} question${lastPicked.length !== 1 ? 's' : ''} selected`);
+}
+
+function clearSelection() { selection = {}; lastPicked = []; renderExport(); renderPreview(); }
+
+function buildPicked() {
+  let all = [];
+  cats().forEach(cat => {
+    const sel = selection[cat] || {};
+    ['easy','medium','hard'].forEach(diff => {
+      const n = parseInt(sel[diff]) || 0;
+      if (n <= 0) return;
+      const pool = db[cat].questions.filter(q => q.diff === diff);
+      const picked = [...pool].sort(() => Math.random() - 0.5).slice(0, Math.min(n, pool.length));
+      all = all.concat(picked.map(q => ({ text: q.text, img: q.img || null })));
+    });
+  });
+  return all.sort(() => Math.random() - 0.5);
+}
+
+function trimesterLabel(trimester, year) {
+  const y = parseInt(year) || '';
+  let label;
+  if (trimester === 'noviembre - enero' && y) {
+    label = `Noviembre ${y} - enero ${y + 1}`;
+  } else {
+    label = [trimester, year].filter(Boolean).join(' ');
+  }
+  return label ? `Trimestre ${label}` : '';
+}
+
+function getInfo() {
+  return {
+    university: document.getElementById('infoUniversity')?.value.trim() || 'Instituto Tecnológico de Santo Domingo (INTEC)',
+    department: document.getElementById('infoDepartment')?.value.trim() || 'Área de Ciencias de la Salud',
+    teacher:    document.getElementById('infoTeacher')?.value.trim()    || 'Dr. Angel Hernandez',
+    subject:    document.getElementById('infoSubject')?.value.trim()    || '',
+    subjectID:  document.getElementById('infoSubjectID')?.value.trim()  || '',
+    trimester:  document.getElementById('infoTrimester')?.value         || '',
+    year:       document.getElementById('infoYear')?.value.trim()       || '',
+    quizName:   document.getElementById('infoQuizName')?.value.trim()   || '',
+    quizID:     document.getElementById('infoQuizID')?.value.trim()     || '',
+  };
+}
+
+function renderPreview() {
+  const area = document.getElementById('previewArea');
+  if (!area) return;
+  const info = getInfo();
+  if (!lastPicked.length) {
+    area.innerHTML = '<div class="empty-state">Fill in quiz info and generate a selection above to preview.</div>';
+    return;
+  }
+  const leftL1 = info.university || '—';
+  const leftL2 = info.subject && info.subjectID ? `${info.subject} (${info.subjectID})` : (info.subject || info.subjectID || '—');
+  const leftL3 = trimesterLabel(info.trimester, info.year) || '—';
+  const rightL1 = info.department || '—';
+  const rightL2 = info.teacher || '—';
+  const rightL3 = `${info.quizName || '—'} pruebín – Modelo ${info.quizID || '—'}`;
+
+  // Assign figura numbers to questions that have images
+  let figNum = 1;
+  const figMap = {}; // index → figura number
+  lastPicked.forEach((q, i) => {
+    const qObj = typeof q === 'string' ? { text: q, img: null } : q;
+    if (qObj.img) { figMap[i] = figNum++; }
+  });
+
+  let html = `<div class="preview-shell">
+    <table style="width:100%;border-collapse:collapse;margin-bottom:10px;font-size:12px;">
+      <tr>
+        <td style="width:50%;vertical-align:top;padding-right:8px;">
+          <div>${leftL1}</div>
+          <div>${leftL2}</div>
+          <div>${leftL3}</div>
+        </td>
+        <td style="width:50%;vertical-align:top;text-align:right;padding-left:8px;">
+          <div>${rightL1}</div>
+          <div>${rightL2}</div>
+          <div>${rightL3}</div>
+        </td>
+      </tr>
+    </table>
+    <div style="border-top:1px solid var(--border);padding-top:10px;margin-bottom:10px;">
+      <div style="display:flex;gap:24px;font-size:12px;">
+        <span>Nombre: <span style="display:inline-block;width:180px;border-bottom:1px solid #333;">&nbsp;</span></span>
+        <span>ID: <span style="display:inline-block;width:100px;border-bottom:1px solid #333;">&nbsp;</span></span>
+      </div>
+    </div>
+    <div style="font-size:11px;color:var(--text2);font-style:italic;margin-bottom:12px;padding:8px 10px;background:var(--bg3);border-radius:6px;">
+      ¡Salve! Lee cuidadosamente el examen, responda brevemente todas las preguntas que conozcas y revisa el examen antes de entregarlo.
+    </div>
+    <div style="padding-top:10px;">`;
+
+  lastPicked.forEach((q, i) => {
+    const qObj = typeof q === 'string' ? { text: q, img: null } : q;
+    const fig = figMap[i];
+    html += `<div style="margin-bottom:6px;">
+      <div class="preview-q">${i+1}. ${qObj.text}${fig ? ` <em style="font-size:11px;color:var(--text2);">(Referirse a la Figura ${fig} para responder.)</em>` : ''}</div>
+      <div style="height:36px;"></div>
+    </div>`;
+  });
+
+  // Figures section at end
+  if (Object.keys(figMap).length > 0) {
+    html += `<div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border);">
+      <div style="font-size:13px;font-weight:600;margin-bottom:10px;">Figuras</div>
+      <div style="display:flex;flex-wrap:wrap;gap:12px;">`;
+    lastPicked.forEach((q, i) => {
+      const qObj = typeof q === 'string' ? { text: q, img: null } : q;
+      const fig = figMap[i];
+      if (!fig) return;
+      html += `<div style="flex:0 0 calc(33.33% - 8px);min-width:0;">
+        <div style="font-size:11px;font-style:italic;color:var(--text2);margin-bottom:4px;">Figura ${fig}</div>
+        <img src="${qObj.img}" alt="Figura ${fig}" style="max-height:200px;max-width:100%;object-fit:contain;display:block;" onerror="this.style.display='none'" />
+      </div>`;
+    });
+    html += `</div></div>`;
+  }
+
+  area.innerHTML = html + '</div></div>';
+}
+
+// Preload an image and return { src, width, height } or null on failure
+// SVGs are rasterized to PNG canvas so jsPDF can embed them
+function preloadImage(src) {
+  return new Promise(resolve => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      const w = img.naturalWidth  || img.width  || 300;
+      const h = img.naturalHeight || img.height || 300;
+      // If SVG, rasterize to PNG via canvas
+      if (src.startsWith('data:image/svg') || src.endsWith('.svg')) {
+        try {
+          const canvas = document.createElement('canvas');
+          const scale = 2; // 2x for quality
+          canvas.width  = w * scale;
+          canvas.height = h * scale;
+          const ctx = canvas.getContext('2d');
+          ctx.scale(scale, scale);
+          ctx.drawImage(img, 0, 0, w, h);
+          const pngSrc = canvas.toDataURL('image/png');
+          resolve({ src: pngSrc, width: w, height: h, fmt: 'PNG' });
+        } catch(e) {
+          resolve(null);
+        }
+      } else {
+        let fmt = 'JPEG';
+        if (src.startsWith('data:image/png') || src.endsWith('.png'))  fmt = 'PNG';
+        else if (src.startsWith('data:image/gif') || src.endsWith('.gif')) fmt = 'GIF';
+        else if (src.startsWith('data:image/webp') || src.endsWith('.webp')) fmt = 'WEBP';
+        resolve({ src, width: w, height: h, fmt });
+      }
+    };
+    img.onerror = () => resolve(null);
+    img.src = src;
+  });
+}
+
+async function downloadPDF() {
+  const questions = lastPicked.length ? lastPicked : buildPicked();
+  if (!questions.length) { showToast('Generate a selection first'); return; }
+  const info = getInfo();
+
+  // Pre-load all images before touching jsPDF
+  const imgSrcs = [...new Set(questions.map(q => (typeof q === 'object' && q.img) ? q.img : null).filter(Boolean))];
+  const imgCache = {};
+  showToast('Preparing PDF…');
+  await Promise.all(imgSrcs.map(async src => {
+    const result = await preloadImage(src);
+    if (result) imgCache[src] = result;
+  }));
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit: 'mm', format: 'letter' });
+  const pw = doc.internal.pageSize.getWidth();
+  const ph = doc.internal.pageSize.getHeight();
+  const margin = 12.7;
+  const cw = pw - margin * 2;
+  let y = margin;
+
+  const cp = (need) => { if (y + need > ph - margin) { doc.addPage(); y = margin; } };
+
+  // Register EB Garamond as closest web-safe proxy for Century Schoolbook
+  doc.addFont('http://fonts.gstatic.com/s/ebgaramond/v7/CDR0kuiFK7I1OZ2hSdR7G6CWcynf_cDxXwCLxiixG1c.ttf', 'EBGaramond', 'normal');
+  const FONT = 'EBGaramond';
+  const FS = 11;
+
+  // Spacing constants
+  const LINE_SINGLE = 5.0;   // single spacing (header)
+  const LINE_BODY   = 6.25;  // 1.25 spacing (instructions + questions)
+  const LINE_DOUBLE = 10.0;  // double spacing (Nombre row)
+
+  // ── HEADER (single-spaced) ───────────────────────────────────────────────
+  const leftL1 = info.university;
+  const leftL2 = info.subject && info.subjectID
+    ? `${info.subject} (${info.subjectID})`
+    : (info.subject || info.subjectID || '');
+  const leftL3 = trimesterLabel(info.trimester, info.year);
+  const rightL1 = info.department;
+  const rightL2 = info.teacher;
+  const rightL3 = `${info.quizName} pruebín - Modelo ${info.quizID}`;
+
+  const colW = cw / 2 - 3;
+
+  doc.setFont(FONT, 'normal'); doc.setFontSize(FS); doc.setTextColor(20, 20, 20);
+
+  // Left column
+  let ly = margin;
+  doc.text(leftL1, margin, ly, { maxWidth: colW }); ly += LINE_SINGLE;
+  if (leftL2) { doc.text(leftL2, margin, ly, { maxWidth: colW }); ly += LINE_SINGLE; }
+  if (leftL3) { doc.text(leftL3, margin, ly, { maxWidth: colW }); ly += LINE_SINGLE; }
+
+  // Right column
+  let ry = margin;
+  doc.text(rightL1, pw - margin, ry, { maxWidth: colW, align: 'right' }); ry += LINE_SINGLE;
+  doc.text(rightL2, pw - margin, ry, { maxWidth: colW, align: 'right' }); ry += LINE_SINGLE;
+  if (info.quizName || info.quizID) {
+    doc.text(rightL3, pw - margin, ry, { maxWidth: colW, align: 'right' }); ry += LINE_SINGLE;
+  }
+
+  y = Math.max(ly, ry) + LINE_SINGLE;
+
+  // ── NOMBRE / ID LINE (double-spaced gap above and below) ─────────────────
+  doc.setFont(FONT, 'normal'); doc.setFontSize(FS); doc.setTextColor(20, 20, 20);
+
+  // Total available width after labels: cw - "Nombre: "(~18mm) - "ID: "(~7mm) - gap(6mm)
+  const totalLineW = cw - 18 - 7 - 6;
+  const nombreLineW = (totalLineW * 3) / 4; // 3/4 of total → 3:1 ratio
+  const idLineW = totalLineW / 4;            // 1/4 of total
+  const idX = margin + 18 + nombreLineW + 6;
+
+  doc.text('Nombre:', margin, y);
+  doc.setLineWidth(0.3); doc.setDrawColor(60, 60, 60);
+  doc.line(margin + 18, y + 0.5, margin + 18 + nombreLineW, y + 0.5);
+  doc.text('ID:', idX, y);
+  doc.line(idX + 7, y + 0.5, idX + 7 + idLineW, y + 0.5);
+  y += LINE_DOUBLE; // double space after Nombre line
+
+  // ── INSTRUCTIONS (1.5-spaced) ─────────────────────────────────────────────
+  doc.setFont(FONT, 'normal'); doc.setFontSize(FS); doc.setTextColor(40, 40, 40);
+  const instrText = '¡Salve! Lee cuidadosamente el examen, responda brevemente todas las preguntas que conozcas y revisa el examen antes de entregarlo.';
+  const instrLines = doc.splitTextToSize(instrText, cw);
+  instrLines.forEach(line => { doc.text(line, margin, y); y += LINE_BODY; });
+
+  // ── QUESTIONS ────────────────────────────────────────────────────────────────
+  const answerLines = 2;
+  const answerBlockH = answerLines * LINE_BODY;
+
+  // Assign figura numbers
+  let figCounter = 1;
+  const figNums = questions.map(q => {
+    const qObj = typeof q === 'string' ? { text: q, img: null } : q;
+    return (qObj.img && imgCache[qObj.img]) ? figCounter++ : null;
+  });
+
+  questions.forEach((q, i) => {
+    const qObj = typeof q === 'string' ? { text: q, img: null } : q;
+    doc.setFont(FONT, 'normal'); doc.setFontSize(FS); doc.setTextColor(20, 20, 20);
+
+    const figN = figNums[i];
+    const noteText = figN ? ` (Referirse a la Figura ${figN} para responder.)` : '';
+    const fullText = `${i + 1}. ${qObj.text}${noteText}`;
+    const qLines = doc.splitTextToSize(fullText, cw);
+    const blockH = qLines.length * LINE_BODY + answerBlockH;
+    cp(blockH + LINE_BODY);
+    qLines.forEach(line => { doc.text(line, margin, y); y += LINE_BODY; });
+    y += answerBlockH;
+  });
+
+  // ── FIGURES at end ────────────────────────────────────────────────────────────
+  // Collect all figures
+  const figItems = [];
+  questions.forEach((q, i) => {
+    const qObj = typeof q === 'string' ? { text: q, img: null } : q;
+    const figN = figNums[i];
+    if (!figN) return;
+    const cached = imgCache[qObj.img];
+    if (!cached) return;
+    // 200px at 96dpi ≈ 52.9mm
+    const maxH = 52.9;
+    const aspect = cached.width / cached.height;
+    let drawH = maxH;
+    let drawW = drawH * aspect;
+    // cap width to one third content width (for 3-per-row)
+    const thirdCW = (cw - 12) / 3;
+    if (drawW > thirdCW) { drawW = thirdCW; drawH = drawW / aspect; }
+    figItems.push({ figN, cached, drawW, drawH });
+  });
+
+  if (figItems.length > 0) {
+    y += LINE_BODY; // small gap after last question
+
+    // "Figuras" heading — same font/size as questions
+    doc.setFont(FONT, 'normal'); doc.setFontSize(FS); doc.setTextColor(20, 20, 20);
+
+    // Check if heading + at least one row fits; if not, new page
+    const rowH = Math.max(...figItems.map(f => f.drawH)) + LINE_BODY * 2;
+    cp(LINE_BODY * 1.5 + rowH);
+
+    doc.setFont(FONT, 'bold'); doc.setFontSize(FS); doc.setTextColor(20, 20, 20);
+    doc.text('Figuras', margin, y); y += LINE_BODY * 1.5;
+
+    // Layout side-by-side in triplets
+    for (let fi = 0; fi < figItems.length; fi += 3) {
+      const a = figItems[fi];
+      const b = figItems[fi + 1] || null;
+      const c = figItems[fi + 2] || null;
+      const pairH = Math.max(a.drawH, b ? b.drawH : 0, c ? c.drawH : 0);
+      cp(pairH + LINE_BODY * 2);
+
+      const colW3 = (cw - 12) / 3;
+      // Labels
+      doc.setFont(FONT, 'italic'); doc.setFontSize(FS); doc.setTextColor(60, 60, 60);
+      doc.text(`Figura ${a.figN}`, margin, y);
+      if (b) doc.text(`Figura ${b.figN}`, margin + colW3 + 6, y);
+      if (c) doc.text(`Figura ${c.figN}`, margin + (colW3 + 6) * 2, y);
+      y += LINE_BODY;
+
+      // Images
+      try { doc.addImage(a.cached.src, a.cached.fmt, margin, y, a.drawW, a.drawH, undefined, 'FAST'); } catch(e) {}
+      if (b) { try { doc.addImage(b.cached.src, b.cached.fmt, margin + colW3 + 6, y, b.drawW, b.drawH, undefined, 'FAST'); } catch(e) {} }
+      if (c) { try { doc.addImage(c.cached.src, c.cached.fmt, margin + (colW3 + 6) * 2, y, c.drawW, c.drawH, undefined, 'FAST'); } catch(e) {} }
+      y += pairH + LINE_BODY;
+    }
+  }
+
+  const trimesterMap = { 'febrero - abril': '1', 'mayo - julio': '2', 'agosto - octubre': '3', 'noviembre - enero': '4' };
+  const trimNum = trimesterMap[info.trimester] || '0';
+  const fname = `${info.year}-${trimNum}-${info.quizName || 'quiz'} pruebín-${info.quizID || 'X'}.pdf`;
+  doc.save(fname);
+  showToast('PDF downloaded!');
+}
+
+function exportBackup() {
+  const json = JSON.stringify(db, null, 2);
+  const blob = new Blob([json], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `question-bank-backup-${new Date().toISOString().slice(0,10)}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('Backup exported!');
+}
+
+function importBackup(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    try {
+      const parsed = JSON.parse(ev.target.result);
+      if (typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error();
+      if (!confirm(`This will replace your current question bank with the backup (${Object.keys(parsed).length} categories). Continue?`)) return;
+      db = parsed;
+      for (const key of Object.keys(db)) {
+        if (Array.isArray(db[key])) db[key] = { id: 0, unit: null, questions: db[key].map(t => typeof t === 'string' ? { text: t, diff: 'easy' } : t) };
+        if (!db[key].questions) db[key].questions = [];
+        if (!('unit' in db[key])) db[key].unit = null;
+      }
+      selection = {}; lastPicked = []; openCats = {};
+      saveToStorage(); populateCatSelects(); renderBank();
+      showToast('Backup imported successfully!');
+    } catch {
+      showToast('Invalid backup file — import failed');
+    }
+    e.target.value = '';
+  };
+  reader.readAsText(file);
+}
+
+function toggleAdvanced() {
+  const panel = document.getElementById('advancedFields');
+  const btn   = document.getElementById('advToggleBtn');
+  const open  = panel.style.display !== 'none';
+  panel.style.display = open ? 'none' : 'block';
+  btn.innerHTML = open ? '&#9656; Show more options' : '&#9662; Hide options';
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+function esc(s) { return s.replace(/&/g,'&amp;').replace(/'/g,'&#39;').replace(/"/g,'&quot;'); }
+function safeid(s) { return s.replace(/[^a-zA-Z0-9]/g, '_'); }
+
+loadFromStorage();
+</script>
+</body>
+</html>
